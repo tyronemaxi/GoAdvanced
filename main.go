@@ -6,17 +6,8 @@ import (
 )
 
 func main() {
-	r := gin.New()
+	r := gin.Default()
 	route.InitRouter(r)
-
-	// Global middleware
-	// Logger middleware will write the logs to gin.DefaultWriter even if you set with GIN_
-	r.Use(gin.Logger())
-
-	//
-	r.Use(gin.Recovery())
-
 
 	r.Run()
 }
-
