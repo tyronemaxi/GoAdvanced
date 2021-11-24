@@ -2,17 +2,20 @@ package route
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
 )
 
-var jwtKey = []byte("my_secret_key")
+// 使用全局变量
+var jwtKey = []byte("jwt-tocken")
 
+// 使用 mysql 存储
 var users = map[string]string{
 	"admin": "admin",
-	"user2": "password2",
+	"tyrone": "tyrone",
 }
 
 // Create a struct that models the structure of a user, both in the request body, and in the DB
@@ -45,31 +48,13 @@ func Login(c *gin.Context) {
 	// AND, if it is the same as the password we received, the we can move ahead
 	// if NOT, then we return an "Unauthorized" status
 	if !ok || expectedPassword != creds.Password {
-		c.JSON(http.StatusBadRequest,gin.H{"error": "用户名或密码错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名或密码错误"})
 		return
 	}
 
-	// Declare the expiration time of the token
-	// here, we have kept it as 5 minutes
-	expirationTime := time.Now().Add(5 * time.Minute)
-	// Create the JWT claims, which includes the username and expiry time
-	claims := &Claims{
-		Username: creds.Username,
-		Password: creds.Password,
-		StandardClaims: jwt.StandardClaims{
-			// In JWT, the expiry time is expressed as unix milliseconds
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-
-	// Declare the token with the algorithm used for signing, and the claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Create the JWT string
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString,err := generateJwtToken(creds)
 	if err != nil {
-		// If there is an error in creating the JWT return an internal server error
-		c.JSON(http.StatusBadRequest,gin.H{"error": "token 生成失败"})
-		return
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
 	// Finally, we set the client cookie for "token" as the JWT we just generated
@@ -82,4 +67,31 @@ func Login(c *gin.Context) {
 	c.SetCookie("jwt-token",tokenString,60,"/login","localhost",false,true)
 	c.JSON(http.StatusOK,gin.H{"message": "登陆成功"})
 	return
+}
+
+func generateJwtToken(creds Credentials) (token string, err error) {
+
+	expirationTime := time.Now().Add(5 * time.Minute)
+	// Create the JWT claims, which includes the username and expiry time
+	claims := &Claims{
+		Username: creds.Username,
+		Password: creds.Password,
+		StandardClaims: jwt.StandardClaims{
+			// In JWT, the expiry time is expressed as unix milliseconds
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	// Declare the token with the algorithm used for signing, and the claims
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256,claims)
+
+	// Create the JWT string
+	jwtTokenString, err := jwtToken.SignedString(jwtKey)
+	if err != nil {
+		// If there is an error in creating the JWT return an internal server error
+
+		return "", fmt.Errorf("token 生成失败")
+	}
+
+	return jwtTokenString, nil
 }
