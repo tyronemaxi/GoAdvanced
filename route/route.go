@@ -13,9 +13,6 @@ func InitRouter(g *gin.Engine) {
 
 	// grouping routes
 
-
-
-
 }
 
 
