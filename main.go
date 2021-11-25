@@ -9,5 +9,6 @@ func main() {
 	r := gin.Default()
 	route.InitRouter(r)
 
+
 	r.Run()
 }
