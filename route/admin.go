@@ -14,17 +14,16 @@ var jwtKey = []byte("jwt-tocken")
 
 // 使用 mysql 存储
 var users = map[string]string{
-	"admin": "admin",
+	"admin":  "admin",
 	"tyrone": "tyrone",
 }
 
 // Create a struct that models the structure of a user, both in the request body, and in the DB
 type Credentials struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
+	Password string `json:"password" binding:"required"`
+	Username string `json:"username" binding:"required"`
 }
 
-//
 type Claims struct {
 	Username string `json:"username"`
 	Password string `json:"passwd"`
@@ -37,7 +36,7 @@ func Login(c *gin.Context) {
 	err := json.NewDecoder(c.Request.Body).Decode(&creds)
 	if err != nil {
 		// If the structure of the body is wrong, return an HTTP error
-		c.JSON(http.StatusBadRequest,gin.H{"error": "json 解析失败"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "json 解析失败"})
 		return
 	}
 
@@ -52,7 +51,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	tokenString,err := generateJwtToken(creds)
+	tokenString, err := generateJwtToken(creds)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
@@ -64,8 +63,8 @@ func Login(c *gin.Context) {
 	//	Value:   tokenString,
 	//	Expires: expirationTime,
 	//})
-	c.SetCookie("jwt-token",tokenString,60,"/login","localhost",false,true)
-	c.JSON(http.StatusOK,gin.H{"message": "登陆成功"})
+	c.SetCookie("jwt-token", tokenString, 60, "/", "localhost", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "登陆成功"})
 	return
 }
 
@@ -83,7 +82,7 @@ func generateJwtToken(creds Credentials) (token string, err error) {
 	}
 
 	// Declare the token with the algorithm used for signing, and the claims
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256,claims)
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// Create the JWT string
 	jwtTokenString, err := jwtToken.SignedString(jwtKey)
@@ -94,4 +93,42 @@ func generateJwtToken(creds Credentials) (token string, err error) {
 	}
 
 	return jwtTokenString, nil
+}
+
+func Welcome(c *gin.Context) (string, error) {
+	// 从请求中获取 Cookie jwt 令牌
+	jwtToken, err := c.Cookie("jwt-token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "token 认证失败",
+		})
+		return "", err
+	}
+
+	// init claims
+	claims := &Claims{}
+
+	tkn, err := jwt.ParseWithClaims(jwtToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "token 未认证",
+			})
+			return "", err
+		}
+	}
+
+	if !tkn.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "token 未认证",
+		})
+		return "", err
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Welcome %s", claims.Username),
+	})
+	return claims.Username, nil
 }

@@ -28,7 +28,7 @@ func DB(opts ...Option) *gorm.DB {
 		for _, f := range opts {
 			f(db)
 		}
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", "root", "123456", "172.18.72.13", 3306, "tyrone")
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", "root", "123456", "localhost", 3306, "tyrone")
 
 		var err error
 		db.instance, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
