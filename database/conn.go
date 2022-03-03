@@ -1,11 +1,11 @@
 package database
 
 import (
+	"GoAdvanced/util"
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"sync"
-	"time"
 )
 
 // 连接数据库
@@ -16,10 +16,8 @@ var db *database
 
 type database struct {
 	instance    *gorm.DB
-	maxIdle     int
-	maxOpen     int
-	maxLifetime time.Duration
 }
+
 type Option func(db *database)
 
 func DB(opts ...Option) *gorm.DB {
@@ -35,12 +33,21 @@ func DB(opts ...Option) *gorm.DB {
 		if err != nil {
 			panic(err)
 		}
-		//
-		//sqlDB,err := db.instance.DB()
-		//if err != nil {
-		//	panic(err)
-		//}
-
 	})
+
+	if util.DBDebugMode {
+		return db.instance.Debug()
+	}
+
 	return db.instance
+}
+
+
+func Begin() *gorm.DB {
+	db := db.instance
+	return db.Begin()
+}
+
+func DoSession(do func(db *gorm.DB) error) (err error) {
+	return db.instance.Transaction(do)
 }
